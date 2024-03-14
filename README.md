@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Next14 Tutorial
+참고영상 : https://www.youtube.com/playlist?list=PLC3y8-rFHvwjOKd6gdf4QtV1uYNiQnruI
 
-## Getting Started
+## Dynamic Routes
+### Server Side Rest API
+route 파일을 사용하여 서버사이드 API를 생성할 수 있다.
+- sample source: [src/app/profile/api/route.ts](src/app/profile/api/route.ts)
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+#### GET Method
+```javascript
+import {NextRequest} from "next/server";
+export async function GET(request: NextRequest) {
+    const searchParams = request.nextUrl.searchParams
+    const query = searchParams.get("query")
+    const filteredComments = query
+    ? comments.filter(comment => comment.text.includes(query))
+    : comments
+    return Response.json(filteredComments)
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### POST Method
+```javascript
+export async function POST(request: Request) {
+  const comment = await request.json()
+  const newComment = {
+    id: comments.length + 1,
+    text: comment.text
+  }
+  comments.push(newComment)
+  return new Response(JSON.stringify(newComment), {
+      headers: {
+        "content-type": "application/json"
+      },
+      status: 201,
+    }
+  )
+}
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Redirects
+```javascript
+import {redirect} from "next/navigation";
+export async function GET(
+  _request: Request,
+  { params } : { params: { id: string }}) {
+  if (parseInt(params.id) > comments.length) {
+    redirect("/comments")
+  }
+  const comment = comments.find(
+    comment => comment.id === parseInt(params.id)
+  )
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+  return Response.json(comment);
+}
+```
 
-## Learn More
+### Headers
+```javascript
+export async function GET(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers)
+  const headerList = headers();
 
-To learn more about Next.js, take a look at the following resources:
+  console.log('requestHeaders', requestHeaders.get("authorization"))
+  console.log('headerList', headerList.get("authorization"));
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+  return new Response("<h1>Profile API data</h1>", {
+    headers: {
+      "content-type": "text/html",
+    },
+  })
+}
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### Cookies
+```javascript
+export async function GET(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers)
+  const headerList = headers();
+  
+  cookies().set("resultsPerPage", "20");
+  const theme = request.cookies.get("theme")
+  console.log('requestHeaders', requestHeaders.get("authorization"))
+  console.log('headerList', headerList.get("authorization"));
+  console.log('cookie1', theme);
+  console.log('cookie2', cookies().get("resultsPerPage"));
+  
+  return new Response("<h1>Profile API data</h1>", {
+    headers: {
+      "content-type": "text/html",
+      "Set-Cookie": "theme=dark",
+    },
+  })
+}
+```
 
-## Deploy on Vercel
+### Cache
+GET 요청은 기본적으로 캐싱되기 때문에 dynamic mode를 설정해 Cache를 비활성화 시킬 수 있다.
+```javascript
+export const dynamic = "force-dynamic";
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+export async function GET() {
+  return Response.json({
+    time: new Date().toLocaleTimeString()
+  })
+}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### Middleware
+```javascript
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  
+  const themePreference = request.cookies.get("theme");
+  if (!themePreference) {
+    response.cookies.set("theme", "dark");
+  }
+  
+  response.headers.set("custom-header", "custom-value");
+  
+  return response;
+  // if (request.nextUrl.pathname === "/profile") {
+  //   return NextResponse.rewrite(new URL("/hello", request.url));
+  // }
+}
+```
+# nextjs14-study2
